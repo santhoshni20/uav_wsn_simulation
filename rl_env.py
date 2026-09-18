@@ -190,20 +190,21 @@ class UAVWSNEnv(gym.Env):
                     pdr_delivered += 1
                     priority_pdr += (sensor.priority ** 1.5)
 
-        # 5. Compute Reward
-        pdr_ratio = pdr_delivered / max(1, total_packets)
-        uav_cs_connected = 1.0 if graph.has_edge("UAV", "CS") else -0.5
-        uav_sensor_links = sum(1 for s in range(NUM_SENSORS) if graph.has_edge(f"S{s}", "UAV"))
-        
-        # Reward components
-        r_delivery = 4.0 * priority_pdr
-        r_connectivity = 2.0 * uav_cs_connected + 0.5 * uav_sensor_links
-        r_energy = -1.0 * (uav_energy_spent * 10.0)
-        
-        # Corridor bounds encouragement
-        r_corridor = 0.5 if (CORRIDOR_X_MIN <= new_x <= CORRIDOR_X_MAX and CORRIDOR_Y_MIN <= new_y <= CORRIDOR_Y_MAX) else -1.0
-        
-        reward = r_delivery + r_connectivity + r_energy + r_corridor
+        # 5. Compute Reward using Step 8 MultiObjectiveRewardCalculator
+        from reward import MultiObjectiveRewardCalculator
+        if not hasattr(self, "reward_calc"):
+            self.reward_calc = MultiObjectiveRewardCalculator()
+
+        reward, reward_details = self.reward_calc.compute_reward(
+            self.sim_env,
+            graph,
+            routing_actions,
+            uav_move_dist=move_dist,
+            uav_energy_spent=uav_energy_spent,
+            previous_components=self.prev_components if hasattr(self, "prev_components") else None
+        )
+        self.prev_components = reward_details["current_components"]
+        pdr_ratio = reward_details["delivered_packets"] / max(1, NUM_SENSORS)
 
         terminated = bool(self.current_step >= self.max_steps or self.sim_env.uav.energy <= 0)
         truncated = False
@@ -212,14 +213,9 @@ class UAVWSNEnv(gym.Env):
         info = self._get_info()
         info.update({
             "pdr_ratio": pdr_ratio,
-            "packets_delivered": pdr_delivered,
-            "priority_score": priority_pdr,
-            "reward_breakdown": {
-                "r_delivery": r_delivery,
-                "r_connectivity": r_connectivity,
-                "r_energy": r_energy,
-                "r_corridor": r_corridor
-            }
+            "packets_delivered": reward_details["delivered_packets"],
+            "priority_score": reward_details["r_delivery"],
+            "reward_breakdown": reward_details
         })
 
         return obs, reward, terminated, truncated, info
