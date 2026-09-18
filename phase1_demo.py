@@ -540,7 +540,7 @@ def generate_phase1_visualization(trajectories, energy_history, graph_snapshots,
     ax6.grid(True, linestyle="--", alpha=0.3)
 
     # ----------------------------------------------------------
-    # Main Title
+    # Main Title & Layout
     # ----------------------------------------------------------
     fig.suptitle(
         "Phase 1: Environment & Data Pipeline - Complete Simulation Output\n"
@@ -548,13 +548,29 @@ def generate_phase1_visualization(trajectories, energy_history, graph_snapshots,
         fontsize=16, fontweight="bold", color="#2c3e50", y=0.99
     )
 
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    # Use subplots_adjust to avoid tight_layout warnings with twinx
+    plt.subplots_adjust(top=0.93, bottom=0.06, left=0.05, right=0.95, hspace=0.38, wspace=0.32)
 
     output_file = "phase1_complete_output.png"
     plt.savefig(output_file, dpi=300, bbox_inches="tight", facecolor=fig.get_facecolor())
-    plt.close(fig)
-
     print(f"  Visualization saved -> {output_file}")
+
+    # Display interactive plot window on screen
+    print("  Displaying interactive graphical window on screen...")
+    try:
+        import os
+        # Also open in default Windows image viewer as a quick preview
+        if os.name == "nt" and os.path.exists(output_file):
+            try:
+                os.startfile(output_file)
+            except Exception:
+                pass
+        plt.show()
+    except Exception as e:
+        print(f"  [Notice] Could not display GUI window: {e}")
+    finally:
+        plt.close(fig)
+
     return output_file
 
 

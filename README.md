@@ -42,11 +42,19 @@ $$E_i(t+1) = \max(0, E_i(t) - \epsilon_{\text{move}})$$
 
 ## 3. How to Run Phase 1 Simulation
 
-### Quick Start
-Execute the main entry point to run all 4 steps and generate the complete Phase 1 visualization:
+### Mode A: Live Animated Dynamic Simulation (Watch Sensors Move Live)
+To launch the real-time GUI window with moving sensor nodes, dynamic connecting links, and live RF disruption monitoring:
 
 ```bash
-# Using the virtual environment
+.\venv\Scripts\python.exe main.py --live
+```
+*(Or: `python live_simulation.py`)*
+- **Controls**: `Spacebar` to Pause/Resume, `R` to Restart, `Q` or `Esc` to Exit.
+
+### Mode B: Full 4-Step Analytical Report & Interactive Graph Window
+To run the full multi-step telemetry and automatically pop open the high-resolution 5-panel analysis window:
+
+```bash
 .\venv\Scripts\python.exe main.py
 ```
 *(Alternatively: `python phase1_demo.py`)*

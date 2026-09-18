@@ -29,6 +29,18 @@ from environment import SimulationEnvironment
 
 
 def main():
+    # Check if user requested live simulation
+    if "--live" in sys.argv or "--animate" in sys.argv:
+        from live_simulation import run_live_simulation
+        print()
+        print("+" + "=" * 65 + "+")
+        print("|   UAV-WSN Live Interactive Simulation (Phase 1)                 |")
+        print("|   Controls: Spacebar = Pause/Resume | R = Restart | Q = Quit    |")
+        print("+" + "=" * 65 + "+")
+        print()
+        run_live_simulation()
+        return
+
     print()
     print("+" + "=" * 65 + "+")
     print("|   UAV-WSN Mountain-Pass Surveillance Simulation                 |")
@@ -79,6 +91,9 @@ def main():
     print("|     [x] Step 2: 20 mobile sensor random-walk & energy models    |")
     print("|     [x] Step 3: Dynamic NetworkX spatial graph generation       |")
     print("|     [x] Step 4: RF disruption zone & link degradation analysis  |")
+    print("|                                                                 |")
+    print("|   [TIP] To watch the real-time moving sensor simulation:        |")
+    print("|         python main.py --live                                   |")
     print("+" + "=" * 65 + "+")
     print()
 
