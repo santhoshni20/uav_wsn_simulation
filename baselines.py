@@ -32,11 +32,18 @@ class StaticUAVDijkstraBaseline:
     """
     def __init__(self):
         self.name = "Static UAV + Dijkstra"
-        self.uav_position = (500.0, 500.0)  # Fixed at corridor center
+        self.uav_position = (500.0, 300.0)  # Fixed at corridor relay position
 
     def get_action(self, env, graph):
-        # UAV stays static -> zero displacement
-        uav_action = np.array([0.0, 0.0], dtype=np.float32)
+        # UAV navigates to fixed relay position, then hovers statically
+        curr_pos = np.array(env.sim_env.uav.position)
+        target = np.array(self.uav_position)
+        diff = target - curr_pos
+        dist = np.linalg.norm(diff)
+        if dist > 5.0:
+            uav_action = np.clip(diff / 40.0, -1.0, 1.0).astype(np.float32)
+        else:
+            uav_action = np.array([0.0, 0.0], dtype=np.float32)
 
         # Route each sensor via shortest path to CS
         node_keys = [f"S{i}" for i in range(NUM_SENSORS)] + ["UAV", "CS"]
@@ -134,14 +141,16 @@ class HeuristicCentroidBaseline:
                 except nx.NodeNotFound:
                     pass
 
-        # UAV moves toward centroid of isolated nodes (or corridor center)
+        # UAV moves toward bridging point between centroid of isolated nodes and CS
+        cs_pos = np.array(env.sim_env.command_station.position)
         if isolated_positions:
-            centroid = np.mean(isolated_positions, axis=0)
+            sensor_centroid = np.mean(isolated_positions, axis=0)
+            target = 0.5 * sensor_centroid + 0.5 * cs_pos
         else:
-            centroid = np.array([500.0, 400.0])
+            target = np.array([500.0, 300.0])
 
         uav_pos = np.array(env.sim_env.uav.position)
-        direction = centroid - uav_pos
+        direction = target - uav_pos
         norm = np.linalg.norm(direction)
         if norm > 1e-3:
             direction = direction / norm

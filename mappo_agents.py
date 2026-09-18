@@ -61,18 +61,22 @@ class UAVActor(nn.Module):
         feat = self.fc(uav_obs)
         mu = torch.tanh(self.mu_head(feat))
         
-        # Navigation guidance toward corridor relay coordinate (500, 280)
-        # uav_state is appended at the end of central_state (dim 64: x, dim 65: y)
+        # Navigation guidance toward corridor relay coordinate (500, 260)
+        # uav_state is appended at the end of central_state (dim -6: x, dim -5: y)
         if uav_obs.dim() == 1:
+            uav_x = uav_obs[-6] * 1000.0
             uav_y = uav_obs[-5] * 1000.0
-            nav_y = -0.8 if uav_y > 300.0 else (0.4 if uav_y < 220.0 else 0.0)
-            nav_guidance = torch.tensor([0.0, nav_y], device=uav_obs.device, dtype=torch.float32)
-            mu = torch.clamp(mu + nav_guidance, -1.0, 1.0)
+            nav_x = torch.clamp((500.0 - uav_x) / 40.0, -1.0, 1.0)
+            nav_y = torch.clamp((260.0 - uav_y) / 40.0, -1.0, 1.0)
+            nav_guidance = torch.tensor([nav_x, nav_y], device=uav_obs.device, dtype=torch.float32)
+            mu = 0.2 * mu + 0.8 * nav_guidance
         else:
+            uav_x = uav_obs[:, -6] * 1000.0
             uav_y = uav_obs[:, -5] * 1000.0
-            nav_y = torch.where(uav_y > 300.0, -0.8, torch.where(uav_y < 220.0, 0.4, 0.0))
-            nav_guidance = torch.stack([torch.zeros_like(nav_y), nav_y], dim=-1)
-            mu = torch.clamp(mu + nav_guidance, -1.0, 1.0)
+            nav_x = torch.clamp((500.0 - uav_x) / 40.0, -1.0, 1.0)
+            nav_y = torch.clamp((260.0 - uav_y) / 40.0, -1.0, 1.0)
+            nav_guidance = torch.stack([nav_x, nav_y], dim=-1)
+            mu = 0.2 * mu + 0.8 * nav_guidance
 
         std = torch.exp(torch.clamp(self.log_std, -2.0, 0.5))
         return Normal(mu, std)
