@@ -3,8 +3,11 @@ import numpy as np
 
 from config import (
     SENSOR_COMMUNICATION_RANGE,
-    UAV_COMMUNICATION_RANGE
+    UAV_COMMUNICATION_RANGE,
+    LINK_QUALITY_THRESHOLD
 )
+
+from disruptions import CommunicationDisruption
 
 
 class DynamicWSNGraph:
@@ -12,6 +15,8 @@ class DynamicWSNGraph:
     def __init__(self):
 
         self.graph = nx.Graph()
+
+        self.disruption = CommunicationDisruption()
 
 
     def calculate_distance(self, position1, position2):
@@ -77,12 +82,24 @@ class DynamicWSNGraph:
                         1 - distance / SENSOR_COMMUNICATION_RANGE
                     )
 
-                    self.graph.add_edge(
-                        f"S{sensor1.node_id}",
-                        f"S{sensor2.node_id}",
-                        distance=distance,
-                        link_quality=link_quality
+                    # Apply communication disruption
+
+                    link_quality = self.disruption.calculate_link_quality(
+                        link_quality,
+                        sensor1.position,
+                        sensor2.position
                     )
+
+                    # Create link only if quality is acceptable
+
+                    if link_quality >= LINK_QUALITY_THRESHOLD:
+
+                        self.graph.add_edge(
+                            f"S{sensor1.node_id}",
+                            f"S{sensor2.node_id}",
+                            distance=distance,
+                            link_quality=link_quality
+                        )
 
 
         # Sensor-to-UAV connections
@@ -100,12 +117,24 @@ class DynamicWSNGraph:
                     1 - distance / UAV_COMMUNICATION_RANGE
                 )
 
-                self.graph.add_edge(
-                    f"S{sensor.node_id}",
-                    "UAV",
-                    distance=distance,
-                    link_quality=link_quality
+                # Apply communication disruption
+
+                link_quality = self.disruption.calculate_link_quality(
+                    link_quality,
+                    sensor.position,
+                    environment.uav.position
                 )
+
+                # Create link only if quality is acceptable
+
+                if link_quality >= LINK_QUALITY_THRESHOLD:
+
+                    self.graph.add_edge(
+                        f"S{sensor.node_id}",
+                        "UAV",
+                        distance=distance,
+                        link_quality=link_quality
+                    )
 
 
         # UAV-to-Command Station connection
@@ -121,12 +150,24 @@ class DynamicWSNGraph:
                 1 - distance / UAV_COMMUNICATION_RANGE
             )
 
-            self.graph.add_edge(
-                "UAV",
-                "CS",
-                distance=distance,
-                link_quality=link_quality
+            # Apply communication disruption
+
+            link_quality = self.disruption.calculate_link_quality(
+                link_quality,
+                environment.uav.position,
+                environment.command_station.position
             )
+
+            # Create link only if quality is acceptable
+
+            if link_quality >= LINK_QUALITY_THRESHOLD:
+
+                self.graph.add_edge(
+                    "UAV",
+                    "CS",
+                    distance=distance,
+                    link_quality=link_quality
+                )
 
 
         return self.graph

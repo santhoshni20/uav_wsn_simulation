@@ -59,3 +59,28 @@ MIN_LINK_QUALITY = 0.1
 MAX_LINK_QUALITY = 1.0
 
 LINK_QUALITY_THRESHOLD = 0.3
+# Communication Disruption Configuration
+
+ENABLE_DISRUPTION = True
+
+DISRUPTION_X_MIN = 450
+DISRUPTION_X_MAX = 550
+
+DISRUPTION_Y_MIN = 350
+DISRUPTION_Y_MAX = 650
+
+DISRUPTION_LINK_QUALITY_FACTOR = 0.25
+
+# Communication Disruption Configuration
+
+ENABLE_DISRUPTION = True
+
+# Terrain-dependent disruption zone
+DISRUPTION_X_MIN = 450
+DISRUPTION_X_MAX = 550
+
+DISRUPTION_Y_MIN = 350
+DISRUPTION_Y_MAX = 650
+
+# Link quality reduction inside disruption zone
+DISRUPTION_LINK_QUALITY_FACTOR = 0.25
