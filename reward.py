@@ -84,9 +84,10 @@ class MultiObjectiveRewardCalculator:
                     total_hops += hop_count
                     if sensor.priority == MAX_PRIORITY:
                         mission_critical_delivered += 1
-                elif nx.has_path(graph, s_name, "CS"):
+                elif nx.has_path(graph, target_name, "CS") or nx.has_path(graph, s_name, "CS"):
                     try:
-                        path_len = nx.shortest_path_length(graph, s_name, "CS")
+                        start_node = target_name if nx.has_path(graph, target_name, "CS") else s_name
+                        path_len = nx.shortest_path_length(graph, start_node, "CS") + (1 if start_node == target_name else 0)
                         delivered_packets += 1
                         hop_count = path_len
                         weighted_prio = (sensor.priority / MAX_PRIORITY) ** 2
@@ -94,7 +95,7 @@ class MultiObjectiveRewardCalculator:
                         total_hops += hop_count
                         if sensor.priority == MAX_PRIORITY:
                             mission_critical_delivered += 1
-                    except nx.NetworkXNoPath:
+                    except (nx.NetworkXNoPath, nx.NodeNotFound):
                         pass
 
         # Component 1: Delivery Reward (quadratic scaling for priority)
@@ -113,17 +114,23 @@ class MultiObjectiveRewardCalculator:
         normalized_move = uav_move_dist / 30.0  # Normalized by max speed
         r_movement = -self.w_movement * (normalized_move ** 2)
 
-        # Component 5: Connectivity Recovery Bonus
+        # Component 5: Connectivity Recovery Bonus & Relay Guidance
         current_components = nx.number_connected_components(graph)
-        uav_bridges_cs = 1.0 if graph.has_edge("UAV", "CS") else -1.0
+        uav_bridges_cs = 2.0 if graph.has_edge("UAV", "CS") else -1.0
         sensors_connected_to_uav = sum(1 for s in range(num_sensors) if graph.has_edge(f"S{s}", "UAV"))
         
+        # Guide UAV towards bridge relay position (corridor center between sensors and CS)
+        uav_pos = np.array(environment.uav.position)
+        target_relay_y = 280.0
+        relay_dist = np.abs(uav_pos[1] - target_relay_y) / 500.0
+        guidance = -1.0 * relay_dist
+
         recovery_bonus = 0.0
         if previous_components is not None and current_components < previous_components:
             # Successfully reconnected partitioned network components
             recovery_bonus = float(previous_components - current_components) * 2.0
             
-        r_connectivity = self.w_connectivity * (uav_bridges_cs * 0.5 + 0.1 * sensors_connected_to_uav + recovery_bonus)
+        r_connectivity = self.w_connectivity * (uav_bridges_cs * 0.5 + 0.1 * sensors_connected_to_uav + recovery_bonus + guidance * 0.4)
 
         # Component 6: Corridor Boundary Constraint Penalty
         ux, uy = environment.uav.position

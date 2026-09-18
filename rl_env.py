@@ -41,7 +41,7 @@ class UAVWSNEnv(gym.Env):
         self.max_steps = max_steps
         self.num_nodes = NUM_SENSORS + 2  # 20 sensors + UAV + CS
 
-        self.uav_max_speed = 30.0  # meters per timestep
+        self.uav_max_speed = 40.0  # meters per timestep
         self.uav_hover_energy = 0.05
         self.uav_move_energy_factor = 0.003
         self.sensor_tx_energy = 0.02

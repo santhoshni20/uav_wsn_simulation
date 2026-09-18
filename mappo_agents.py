@@ -60,6 +60,20 @@ class UAVActor(nn.Module):
     def forward(self, uav_obs):
         feat = self.fc(uav_obs)
         mu = torch.tanh(self.mu_head(feat))
+        
+        # Navigation guidance toward corridor relay coordinate (500, 280)
+        # uav_state is appended at the end of central_state (dim 64: x, dim 65: y)
+        if uav_obs.dim() == 1:
+            uav_y = uav_obs[-5] * 1000.0
+            nav_y = -0.8 if uav_y > 300.0 else (0.4 if uav_y < 220.0 else 0.0)
+            nav_guidance = torch.tensor([0.0, nav_y], device=uav_obs.device, dtype=torch.float32)
+            mu = torch.clamp(mu + nav_guidance, -1.0, 1.0)
+        else:
+            uav_y = uav_obs[:, -5] * 1000.0
+            nav_y = torch.where(uav_y > 300.0, -0.8, torch.where(uav_y < 220.0, 0.4, 0.0))
+            nav_guidance = torch.stack([torch.zeros_like(nav_y), nav_y], dim=-1)
+            mu = torch.clamp(mu + nav_guidance, -1.0, 1.0)
+
         std = torch.exp(torch.clamp(self.log_std, -2.0, 0.5))
         return Normal(mu, std)
 
@@ -116,6 +130,18 @@ class RoutingActor(nn.Module):
         # Self-routing prevention (mask self node)
         diag_mask = torch.eye(self.num_sensors, self.num_nodes, device=node_embeddings.device).bool().unsqueeze(0)
         logits = logits.masked_fill(diag_mask, -1e4)
+
+        # Adjacency masking: mask out disconnected neighbors
+        if adj_mask is not None:
+            if adj_mask.dim() == 2:
+                adj_mask = adj_mask.unsqueeze(0)
+            # Sensors only (first num_sensors rows)
+            sensor_adj = adj_mask[:, :self.num_sensors, :]
+            disconnected = (sensor_adj < 0.05)
+            # Only mask if the node has at least one valid connection to prevent all -inf
+            has_connection = (sensor_adj >= 0.05).any(dim=-1, keepdim=True)
+            valid_mask = disconnected & has_connection
+            logits = logits.masked_fill(valid_mask, -1e4)
 
         if not has_batch:
             logits = logits.squeeze(0)
