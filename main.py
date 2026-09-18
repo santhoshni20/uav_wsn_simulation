@@ -1,79 +1,87 @@
+"""
+=============================================================================
+UAV-Assisted Mobile WSN Simulation in Mountain-Pass Surveillance Corridor
+=============================================================================
+PHASE 1: Environment & Data Pipeline
+  Step 1 - Simulation Environment
+  Step 2 - Mobile Sensor Simulation
+  Step 3 - Dynamic WSN Graph
+  Step 4 - Communication Disruptions
+
+Run:
+  python main.py
+=============================================================================
+"""
+
+import sys
 import numpy as np
 
+from phase1_demo import (
+    run_step1,
+    run_step2,
+    run_step3,
+    run_step4,
+    generate_phase1_visualization,
+    SIMULATION_STEPS,
+    NUM_SENSORS
+)
 from environment import SimulationEnvironment
-from network import DynamicWSNGraph
-from visualization import visualize_step
 
 
-# --------------------------------------------------
-# Make the simulation reproducible
-# --------------------------------------------------
+def main():
+    print()
+    print("+" + "=" * 65 + "+")
+    print("|   UAV-WSN Mountain-Pass Surveillance Simulation                 |")
+    print("|   PHASE 1: Environment & Data Pipeline (Steps 1 - 4)           |")
+    print("+" + "=" * 65 + "+")
+    print()
 
-np.random.seed(42)
+    # Step 1: Create simulation environment
+    env = run_step1()
 
+    # Step 2: Simulate mobile sensors
+    trajectories, energy_history, uav_positions = run_step2(env)
 
-# --------------------------------------------------
-# Create simulation environment
-# --------------------------------------------------
+    # Step 3: Build dynamic WSN graph
+    network, graph_snapshots, topology_stats, env = run_step3(env, trajectories)
 
-environment = SimulationEnvironment()
+    # Re-run environment from seed 42 to capture aligned trajectories
+    env2 = SimulationEnvironment()
+    np.random.seed(42)
+    env2 = SimulationEnvironment()
+    traj2 = {i: [env2.sensors[i].position] for i in range(NUM_SENSORS)}
+    ehist2 = {i: [env2.sensors[i].energy] for i in range(NUM_SENSORS)}
+    for t in range(1, SIMULATION_STEPS):
+        env2.step()
+        for i in range(NUM_SENSORS):
+            traj2[i].append(env2.sensors[i].position)
+            ehist2[i].append(env2.sensors[i].energy)
 
-network = DynamicWSNGraph()
+    # Step 4: Introduce and analyze communication disruptions
+    run_step4(graph_snapshots, topology_stats)
 
+    # Visualization
+    print("=" * 65)
+    print("  VISUALIZATION - Generating Phase 1 Graphical Analysis")
+    print("=" * 65)
+    output_file = generate_phase1_visualization(
+        traj2, ehist2, graph_snapshots, topology_stats, env2
+    )
 
-# --------------------------------------------------
-# Timestep 0
-# --------------------------------------------------
-
-graph = network.build_graph(environment)
-
-print(
-    f"Timestep: {environment.current_step} | "
-    f"Nodes: {graph.number_of_nodes()} | "
-    f"Edges: {graph.number_of_edges()} | "
-    f"Components: {__import__('networkx').number_connected_components(graph)}"
-)
-
-
-visualize_step(
-    environment,
-    graph,
-    "timestep_0_disruption.png"
-)
-
-
-# --------------------------------------------------
-# Move simulation to timestep 20
-# --------------------------------------------------
-
-for step in range(20):
-
-    environment.step()
-
-
-# --------------------------------------------------
-# Timestep 20
-# --------------------------------------------------
-
-graph = network.build_graph(environment)
-
-print(
-    f"Timestep: {environment.current_step} | "
-    f"Nodes: {graph.number_of_nodes()} | "
-    f"Edges: {graph.number_of_edges()} | "
-    f"Components: {__import__('networkx').number_connected_components(graph)}"
-)
+    print()
+    print("+" + "=" * 65 + "+")
+    print("|   [SUCCESS] PHASE 1 EXECUTION COMPLETED                         |")
+    print("|                                                                 |")
+    print(f"|   Output Plot : {output_file:<46}  |")
+    print("|                                                                 |")
+    print("|   Milestones Delivered:                                         |")
+    print("|     [x] Step 1: Terrain, corridor, sensor & UAV initialization  |")
+    print("|     [x] Step 2: 20 mobile sensor random-walk & energy models    |")
+    print("|     [x] Step 3: Dynamic NetworkX spatial graph generation       |")
+    print("|     [x] Step 4: RF disruption zone & link degradation analysis  |")
+    print("+" + "=" * 65 + "+")
+    print()
 
 
-visualize_step(
-    environment,
-    graph,
-    "timestep_20_disruption.png"
-)
-
-
-print()
-print("Step 4 visualization completed.")
-print("Generated:")
-print(" - timestep_0_disruption.png")
-print(" - timestep_20_disruption.png")
+if __name__ == "__main__":
+    main()
